@@ -24,7 +24,7 @@ func (m *EventModel) Insert(event *Event) error {
 	return m.DB.QueryRowContext(ctx, query, event.OwnerId, event.Name, event.Description, event.Date, event.Location).Scan(&event.Id)
 }
 
-func (m *EventModel) getAll() ([]*Event, error) {
+func (m *EventModel) GetAll() ([]*Event, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -52,6 +52,40 @@ func (m *EventModel) getAll() ([]*Event, error) {
 	}
 
 	if err = rows.Err(); err !=nil {
-		
+		return nil, err
 	}
+
+	return events, nil
+}
+
+func (m *EventModel) Get(id int) (*Event, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := "SELECT * FROM events WHERE id = $1"
+
+	var event Event
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(&event.Id, &event.OwnerId, &event.Name, &event.Description, &event.Date, &event.Location)
+	if err != nil {
+		if err  == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil,err
+	}
+
+	return &event,  nil
+}
+
+func (m *EventModel) Delete(id int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := "DELETE FROM events WHERE id = $1"
+
+	_, err := m.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
