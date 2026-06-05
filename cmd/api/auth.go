@@ -15,4 +15,25 @@ func (app*application) registerUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error":"Something went wrong"})
+		return
+	}
+
+	register.Password = string(hashedPassword)
+	user := database.User{
+		Email:    register.Email,
+		Password: register.Password,
+		Name:     register.Name,
+	}
+	
+	err = app.models.Users.Insert(&user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create us"})
+		return
+	}
+	C.JSON(http.StatusCreated, user)
+
 }

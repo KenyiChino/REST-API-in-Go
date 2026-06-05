@@ -17,8 +17,9 @@ func(app *application) createEvent(c *gin.context) {
 	err := app.models.Events.Insert(&event)
 
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error":"Failed to create event"})
-		retun
+		return
 	}
 
 	c.JSON(http.StatusCreated, event)
@@ -99,4 +100,76 @@ func (app *application) deleteEvent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (app *application) addAttendeeToEvent(c *gin.Context) {
+	eventId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user Id"})
+		return
+	}
+
+	userId, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Invalid user Id"})
+		return
+	}
+
+	event, err := app.models.Events.Get(eventId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Failed to retreive event"})
+		return
+	}
+
+	if event == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error" : "Event not found"})
+	}
+
+	userToAdd, err := app.models.Users.Get(userId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Failed to retreive event"})
+		return
+	}
+	if userToAdd == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error" : "User not found"})
+	}
+
+	existingAttendee, err := app.models.Attendees.GetByEventAndAttendee(event.Id, userToAdd.Id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Failed to retreive attendee"})
+		return
+	}
+	if existingAttendee != nil {
+		c.JSON(http.StatusConflict, gin.H{"error" : "Attendee already exists"})
+		return
+	}
+
+	attendee := database.Attendee{
+		EventId: event.Id,
+		UserId:  userToAdd.Id,
+	}
+
+	_, err = app.models.Attendees.insert(&attendee)
+	iferr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Failed to add attendee"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, attendee)
+}
+
+func (app *application) getAttendeesForEvent(c *gin.Context){
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Invalid event id"})
+		return
+	}
+
+	users, err := app.models.Attendees.GetAttendeesByEvent(id)
+	iferr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "Failed to to retreive attendees for events"})
+		return
+	}
+
+	c.JSON(http.StatusOk, users)
 }
